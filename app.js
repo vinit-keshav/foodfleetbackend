@@ -99,34 +99,63 @@ app.get("/signout", (req, res) => {
   });
 });
 
+// Middleware function to check if user is authenticated
+function isAuthenticated(req, res, next) {
+  if (req.session.email) {
+      next(); // User is authenticated, proceed to the next middleware or route handler
+  } else {
+      res.status(401).json({ message: 'User not authenticated' });
+  }
+}
 
 
 // Middleware to get user details and set them in session
-app.get('/getUserDetails', async (req, res) => {
-  // console.log("Session in /getUserDetails:", req.session);
-  if (req.session.email) { // Using email as the unique identifier for session
-    try {
+// app.get('/getUserDetails', async (req, res) => {
+//   // console.log("Session in /getUserDetails:", req.session);
+//   if (req.session.email) { // Using email as the unique identifier for session
+//     try {
+//       const user = await collection.findOne({ email: req.session.email });
+//       if (user) {
+//         res.json({
+//           firstName: user.firstName,
+//           lastName: user.lastName,
+//           rollNo: user.rollNo,
+//           uniqueID: user.uniqueID,
+//           instituteName: user.instituteName
+//         });
+//       } else {
+//         res.status(404).json({ message: 'User not found' });
+//       }
+//     } catch (error) {
+//       console.error('Error fetching user details:', error);
+//       res.status(500).json({ message: 'Internal server error', error: error.message });
+//     }
+//   } else {
+//     res.status(401).json({ message: 'User not authenticated' });
+//   }
+// });
+
+// Example usage of isAuthenticated middleware
+app.get('/getUserDetails', isAuthenticated, async (req, res) => {
+  // Fetch user details if authenticated
+  try {
       const user = await collection.findOne({ email: req.session.email });
       if (user) {
-        res.json({
-          firstName: user.firstName,
-          lastName: user.lastName,
-          rollNo: user.rollNo,
-          uniqueID: user.uniqueID,
-          instituteName: user.instituteName
-        });
+          res.json({
+              firstName: user.firstName,
+              lastName: user.lastName,
+              rollNo: user.rollNo,
+              uniqueID: user.uniqueID,
+              instituteName: user.instituteName
+          });
       } else {
-        res.status(404).json({ message: 'User not found' });
+          res.status(404).json({ message: 'User not found' });
       }
-    } catch (error) {
+  } catch (error) {
       console.error('Error fetching user details:', error);
       res.status(500).json({ message: 'Internal server error', error: error.message });
-    }
-  } else {
-    res.status(401).json({ message: 'User not authenticated' });
   }
 });
-
 
 
 
