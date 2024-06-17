@@ -19,21 +19,9 @@ app.use(express.urlencoded({ extended: true }))
 // app.use(cors())
 const port = process.env.PORT || 8000
 
-
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://667052b38403f23b678aa5a6--spectacular-nougat-f392d2.netlify.app/'
-];
-
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true // Allow credentials (cookies)
+  origin: process.env.CORS_ORIGIN, // Use the CORS_ORIGIN environment variable
+  credentials: true, // Allow credentials (cookies, authorization headers)
 };
 
 app.use(cors(corsOptions));
