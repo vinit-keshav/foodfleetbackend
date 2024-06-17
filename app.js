@@ -22,7 +22,7 @@ const port = process.env.PORT || 8000
 
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://667040d6b68f65274358aa9e--charming-cendol-c2ef08.netlify.app'
+  'https://667052b38403f23b678aa5a6--spectacular-nougat-f392d2.netlify.app/'
 ];
 
 const corsOptions = {
