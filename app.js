@@ -19,11 +19,28 @@ app.use(express.urlencoded({ extended: true }))
 // app.use(cors())
 const port = process.env.PORT || 8000
 
+
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://667040d6b68f65274358aa9e--charming-cendol-c2ef08.netlify.app'
+];
+
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN, 
-  credentials: true, // Allow credentials (cookies)
+  origin: function (origin, callback) {
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true // Allow credentials (cookies)
 };
+
 app.use(cors(corsOptions));
+
+
+
+
 mongoose.connect(process.env.DATABASE, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
