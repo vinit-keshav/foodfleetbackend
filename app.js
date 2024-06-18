@@ -49,12 +49,13 @@ app.use(session({
   }),
   cookie: {
      secure: process.env.NODE_ENV === 'production',  maxAge: 3600000,
-     httpOnly: true
+     httpOnly: true,
+     sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax'
   }
 }));
 
 app.use((req, res, next) => {
-  console.log('Session:', req.session);
+  console.log('Session:', req.session.email);
   next();
 });
 
@@ -104,7 +105,7 @@ app.get("/signout", (req, res) => {
 
 // Middleware to get user details and set them in session
 app.get('/getUserDetails', async (req, res) => {
-  // console.log("Session in /getUserDetails:", req.session);
+  console.log("Session in /getUserDetails:", req.session.email);
   if (req.session.email) { // Using email as the unique identifier for session
     try {
       const user = await collection.findOne({ email: req.session.email });
