@@ -164,31 +164,70 @@ app.get("/signout", (req, res) => {
 
 
 
+// Middleware to verify JWT token
+function verifyToken(req, res, next) {
+  const token = req.headers.authorization;
 
-app.get('/getUserDetails', async (req, res) => {
-  console.log("Session in /getUserDetails:", req.session.email);
-  if (req.session.email) { // Using email as the unique identifier for session
-    try {
-      const user = await collection.findOne({ email: req.session.email });
-      if (user) {
-        res.json({
-          firstName: user.firstName,
-          lastName: user.lastName,
-          rollNo: user.rollNo,
-          uniqueID: user.uniqueID,
-          instituteName: user.instituteName
-        });
-      } else {
-        res.status(404).json({ message: 'User not found' });
-      }
-    } catch (error) {
-      console.error('Error fetching user details:', error);
-      res.status(500).json({ message: 'Internal server error', error: error.message });
+  if (!token) {
+    return res.status(401).json({ message: 'Unauthorized: Missing token' });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ message: 'Unauthorized: Invalid token' });
     }
-  } else {
-    res.status(401).json({ message: 'User not authenticated' });
+    req.email = decoded.email; // Assuming your JWT payload includes 'email'
+    next();
+  });
+}
+
+// Endpoint protected by JWT authentication
+app.get('/getUserDetails', verifyToken, async (req, res) => {
+  try {
+    const user = await collection.findOne({ email: req.email });
+
+    if (user) {
+      res.json({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        rollNo: user.rollNo,
+        uniqueID: user.uniqueID,
+        instituteName: user.instituteName
+      });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    console.error('Error fetching user details:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
+
+
+// app.get('/getUserDetails', async (req, res) => {
+//   console.log("Session in /getUserDetails:", req.session.email);
+//   if (req.session.email) { // Using email as the unique identifier for session
+//     try {
+//       const user = await collection.findOne({ email: req.session.email });
+//       if (user) {
+//         res.json({
+//           firstName: user.firstName,
+//           lastName: user.lastName,
+//           rollNo: user.rollNo,
+//           uniqueID: user.uniqueID,
+//           instituteName: user.instituteName
+//         });
+//       } else {
+//         res.status(404).json({ message: 'User not found' });
+//       }
+//     } catch (error) {
+//       console.error('Error fetching user details:', error);
+//       res.status(500).json({ message: 'Internal server error', error: error.message });
+//     }
+//   } else {
+//     res.status(401).json({ message: 'User not authenticated' });
+//   }
+// });
 
 // // Middleware function to check if user is authenticated
 // function isAuthenticated(req, res, next) {
