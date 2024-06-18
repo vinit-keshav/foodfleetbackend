@@ -11,6 +11,7 @@ const User = require('./mongoo.js');
 const MongoStore = require('connect-mongo');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const cors = require("cors")
 const bodyParser = require('body-parser');
 const app = express()
@@ -59,9 +60,145 @@ app.use((req, res, next) => {
   next();
 });
 
+app.post("/", async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await collection.findOne({ email: email });
+
+    if (user && user.password === password) {
+      // Generate JWT token
+      const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, {
+        expiresIn: '1h' // Token expiration time (optional)
+      });
+
+      // Save email in session (if needed)
+      req.session.email = user.email;
+
+      // Respond with success and token
+      res.json({
+        status: "success",
+        token: token,
+        user: { firstName: user.firstName, rollNo: user.rollNo }
+      });
+    } else {
+      res.status(401).json({ status: "error", message: "Incorrect email or password" });
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ status: "error", message: "An error occurred. Please try again." });
+  }
+});
 
 
 
+// app.post("/", async (req, res) => {
+//   const { email, password } = req.body;
+
+//   try {
+//     const user = await collection.findOne({ email: email });
+
+//     if (user) {
+//       if (user.password === password) {
+//         req.session.email = user.email;
+//         req.session.save(err => {
+//           if (err) {
+//             console.error('Session save error:', err);
+//             res.json({ status: "error", message: "Session save error" });
+//           } else {
+//             res.json({ status: "success", user: { firstName: user.firstName, rollNo: user.rollNo } });
+//           }
+//         });
+//       } else {
+//         res.json({ status: "error", message: "Incorrect password" });
+//       }
+//     } else {
+//       res.json({ status: "error", message: "User not found" });
+//     }
+//   } catch (error) {
+//     console.error("Error:", error);
+//     res.json({ status: "error", message: "An error occurred. Please try again." });
+//   }
+// });
+// Endpoint protected by JWT authentication
+
+function verifyToken(req, res, next) {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ message: 'Unauthorized: Missing token' });
+  }
+
+  // Split the token into two parts: Bearer and <token>
+  const tokenParts = token.split(' ');
+  if (tokenParts.length !== 2 || tokenParts[0] !== 'Bearer') {
+    return res.status(401).json({ message: 'Unauthorized: Malformed token' });
+  }
+
+  const accessToken = tokenParts[1];
+
+  // Verify the token
+  jwt.verify(accessToken, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      console.error('JWT Verification Error:', err);
+      return res.status(401).json({ message: 'Unauthorized: Invalid token' });
+    }
+    
+    console.log('Decoded Token Payload:', decoded); // Log decoded token payload
+    req.email = decoded.email; // Assuming your JWT payload includes 'email'
+    next();
+  });
+}
+
+
+
+
+app.get('/getUserDetails', verifyToken, async (req, res) => {
+  try {
+    const user = await collection.findOne({ email: req.email });
+    
+    if (user) {
+      res.json({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        rollNo: user.rollNo,
+        uniqueID: user.uniqueID,
+        instituteName: user.instituteName
+      });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    console.error('Error fetching user details:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+});
+
+// function verifyToken(req, res, next) {
+//   const token = req.headers.authorization;
+
+//   if (!token) {
+//     return res.status(401).json({ message: 'Unauthorized: Missing token' });
+//   }
+
+//   jwt.verify(token.split(' ')[1], process.env.JWT_SECRET, (err, decoded) => {
+//     if (err) {
+//       return res.status(401).json({ message: 'Unauthorized: Invalid token' });
+//     }
+//     req.email = decoded.email; // Assuming your JWT payload includes 'email'
+//     next();
+//   });
+// }
+
+app.get('/getMenuItems/:uniqueID', async (req, res) => {
+  try {
+    const menuItems = await MenuItem.find({ uniqueID: req.params.uniqueID });
+    res.json(menuItems);
+  } catch (error) {
+    console.error('Error fetching menu items:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+});
 // app.post("/", async (req, res) => {
 //   const { email, password } = req.body;
   
@@ -84,36 +221,6 @@ app.use((req, res, next) => {
 //     res.json({ status: "error", message: "An error occurred. Please try again." });
 //   }
 // });
-
-
-app.post("/", async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
-    const user = await collection.findOne({ email: email });
-
-    if (user) {
-      if (user.password === password) {
-        req.session.email = user.email;
-        req.session.save(err => {
-          if (err) {
-            console.error('Session save error:', err);
-            res.json({ status: "error", message: "Session save error" });
-          } else {
-            res.json({ status: "success", user: { firstName: user.firstName, rollNo: user.rollNo } });
-          }
-        });
-      } else {
-        res.json({ status: "error", message: "Incorrect password" });
-      }
-    } else {
-      res.json({ status: "error", message: "User not found" });
-    }
-  } catch (error) {
-    console.error("Error:", error);
-    res.json({ status: "error", message: "An error occurred. Please try again." });
-  }
-});
 
 // app.post('/', async (req, res) => {
 //   const { email, password } = req.body;
@@ -158,50 +265,11 @@ app.get("/signout", (req, res) => {
       } else {
           res.clearCookie('connect.sid'); // Clear the session cookie
           res.json({ status: "success", message: "Signed out successfully" });
-      }
-  });
-});
-
-
-
-// Middleware to verify JWT token
-function verifyToken(req, res, next) {
-  const token = req.headers.authorization;
-
-  if (!token) {
-    return res.status(401).json({ message: 'Unauthorized: Missing token' });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(401).json({ message: 'Unauthorized: Invalid token' });
-    }
-    req.email = decoded.email; // Assuming your JWT payload includes 'email'
-    next();
-  });
-}
-
-// Endpoint protected by JWT authentication
-app.get('/getUserDetails', verifyToken, async (req, res) => {
-  try {
-    const user = await collection.findOne({ email: req.email });
-
-    if (user) {
-      res.json({
-        firstName: user.firstName,
-        lastName: user.lastName,
-        rollNo: user.rollNo,
-        uniqueID: user.uniqueID,
-        instituteName: user.instituteName
+        }
       });
-    } else {
-      res.status(404).json({ message: 'User not found' });
-    }
-  } catch (error) {
-    console.error('Error fetching user details:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
-  }
-});
+    });
+    
+
 
 
 // app.get('/getUserDetails', async (req, res) => {
@@ -315,15 +383,6 @@ app.post('/saveOrder', async (req, res) => {
 
 
 
-app.get('/getMenuItems/:uniqueID', async (req, res) => {
-  try {
-    const menuItems = await MenuItem.find({ uniqueID: req.params.uniqueID });
-    res.json(menuItems);
-  } catch (error) {
-    console.error('Error fetching menu items:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
-  }
-});
 
 
 app.post('/signupp', async (req, res) => {
@@ -710,6 +769,7 @@ app.get('/item-requests', async (req, res) => {
   }
 });
 
+module.exports = verifyToken;
 module.exports = router;
 app.listen(port,()=>{
   console.log(`port connected ${port}`);
