@@ -327,16 +327,9 @@ app.get("/signout", (req, res) => {
 //   }
 // });
 
-
-
-app.post('/saveOrder', async (req, res) => {
+app.post('/saveOrder', verifyToken, async (req, res) => {
   try {
-    if (!req.session.email) {
-      return res.status(401).json({ message: 'User not authenticated' });
-    }
-
-    // Assuming collection refers to your user collection
-    const user = await collection.findOne({ email: req.session.email });
+    const user = await collection.findOne({ email: req.email });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -380,6 +373,59 @@ app.post('/saveOrder', async (req, res) => {
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
+
+
+// app.post('/saveOrder', async (req, res) => {
+//   try {
+//     if (!req.session.email) {
+//       return res.status(401).json({ message: 'User not authenticated' });
+//     }
+
+//     // Assuming collection refers to your user collection
+//     const user = await collection.findOne({ email: req.session.email });
+//     if (!user) {
+//       return res.status(404).json({ message: 'User not found' });
+//     }
+
+//     const { orders, totalPrice } = req.body;
+
+//     const existingStudentOrder = await StudentOrder.findOne({ rollNo: user.rollNo });
+
+//     if (existingStudentOrder) {
+//       existingStudentOrder.totalPrice += totalPrice;
+//       existingStudentOrder.orders = existingStudentOrder.orders.concat(orders);
+//       await existingStudentOrder.save();
+//       res.status(200).json({ message: 'Order updated successfully' });
+//     } else {
+//       const newStudentOrder = new StudentOrder({
+//         firstName: user.firstName,
+//         lastName: user.lastName,
+//         rollNo: user.rollNo,
+//         orders,
+//         uniqueID: user.uniqueID,
+//         totalPrice
+//       });
+//       await newStudentOrder.save();
+//       res.status(201).json({ message: 'Order saved successfully' });
+//     }
+
+//     // Update availableQuantity in MenuItem documents
+//     for (const orderItem of orders) {
+//       const menuItem = await MenuItem.findOne({ itemName: orderItem.name });
+//       if (menuItem) {
+//         menuItem.availableQuantity -= orderItem.quantity;
+//         await menuItem.save();
+//       } else {
+//         console.error(`MenuItem not found for order item: ${orderItem.name}`);
+//         // Handle the case where MenuItem is not found (maybe alert or log)
+//       }
+//     }
+
+//   } catch (error) {
+//     console.error('Error saving order:', error);
+//     res.status(500).json({ message: 'Internal server error', error: error.message });
+//   }
+// });
 
 
 
