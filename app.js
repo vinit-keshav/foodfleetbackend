@@ -62,47 +62,17 @@ app.use((req, res, next) => {
 
 
 
-app.post("/", async (req, res) => {
-  const { email, password } = req.body;
-  
-  try {
-    const user = await collection.findOne({ email: email });
-    
-    if (user) {
-      if (user.password === password) {
-        req.session.email = user.email;
-        console.log("Session after setting email:", req.session);
-        res.json({ status: "success", user: { firstName: user.firstName, rollNo: user.rollNo } });
-      } else {
-        res.json({ status: "error", message: "Incorrect password" });
-      }
-    } else {
-      res.json({ status: "error", message: "User not found" });
-    }
-  } catch (error) {
-    console.error("Error:", error);
-    res.json({ status: "error", message: "An error occurred. Please try again." });
-  }
-});
-
-
 // app.post("/", async (req, res) => {
 //   const { email, password } = req.body;
-
+  
 //   try {
 //     const user = await collection.findOne({ email: email });
-
+    
 //     if (user) {
 //       if (user.password === password) {
 //         req.session.email = user.email;
-//         req.session.save(err => {
-//           if (err) {
-//             console.error('Session save error:', err);
-//             res.json({ status: "error", message: "Session save error" });
-//           } else {
-//             res.json({ status: "success", user: { firstName: user.firstName, rollNo: user.rollNo } });
-//           }
-//         });
+//         console.log("Session after setting email:", req.session);
+//         res.json({ status: "success", user: { firstName: user.firstName, rollNo: user.rollNo } });
 //       } else {
 //         res.json({ status: "error", message: "Incorrect password" });
 //       }
@@ -114,6 +84,36 @@ app.post("/", async (req, res) => {
 //     res.json({ status: "error", message: "An error occurred. Please try again." });
 //   }
 // });
+
+
+app.post("/", async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await collection.findOne({ email: email });
+
+    if (user) {
+      if (user.password === password) {
+        req.session.email = user.email;
+        req.session.save(err => {
+          if (err) {
+            console.error('Session save error:', err);
+            res.json({ status: "error", message: "Session save error" });
+          } else {
+            res.json({ status: "success", user: { firstName: user.firstName, rollNo: user.rollNo } });
+          }
+        });
+      } else {
+        res.json({ status: "error", message: "Incorrect password" });
+      }
+    } else {
+      res.json({ status: "error", message: "User not found" });
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    res.json({ status: "error", message: "An error occurred. Please try again." });
+  }
+});
 
 // app.post('/', async (req, res) => {
 //   const { email, password } = req.body;
