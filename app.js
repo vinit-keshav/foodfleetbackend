@@ -48,9 +48,9 @@ app.use(session({
     collectionName: 'sessions'
   }),
   cookie: {
-     secure: process.env.NODE_ENV === 'production',  maxAge: 3600000,
+     secure: process.env.NODE_ENV === 'production',  
      httpOnly: true,
-     sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax'
+     sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',maxAge: 3600000
   }
 }));
 
@@ -62,17 +62,47 @@ app.use((req, res, next) => {
 
 
 
+// app.post("/", async (req, res) => {
+//   const { email, password } = req.body;
+  
+//   try {
+//     const user = await collection.findOne({ email: email });
+    
+//     if (user) {
+//       if (user.password === password) {
+//         req.session.email = user.email;
+//         console.log("Session after setting email:", req.session);
+//         res.json({ status: "success", user: { firstName: user.firstName, rollNo: user.rollNo } });
+//       } else {
+//         res.json({ status: "error", message: "Incorrect password" });
+//       }
+//     } else {
+//       res.json({ status: "error", message: "User not found" });
+//     }
+//   } catch (error) {
+//     console.error("Error:", error);
+//     res.json({ status: "error", message: "An error occurred. Please try again." });
+//   }
+// });
+
+
 app.post("/", async (req, res) => {
   const { email, password } = req.body;
-  
+
   try {
     const user = await collection.findOne({ email: email });
-    
+
     if (user) {
       if (user.password === password) {
         req.session.email = user.email;
-        console.log("Session after setting email:", req.session);
-        res.json({ status: "success", user: { firstName: user.firstName, rollNo: user.rollNo } });
+        req.session.save(err => {
+          if (err) {
+            console.error('Session save error:', err);
+            res.json({ status: "error", message: "Session save error" });
+          } else {
+            res.json({ status: "success", user: { firstName: user.firstName, rollNo: user.rollNo } });
+          }
+        });
       } else {
         res.json({ status: "error", message: "Incorrect password" });
       }
@@ -84,7 +114,6 @@ app.post("/", async (req, res) => {
     res.json({ status: "error", message: "An error occurred. Please try again." });
   }
 });
-
 
 
 
