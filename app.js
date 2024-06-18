@@ -1,4 +1,4 @@
-// require('dotenv').config();
+
 require('dotenv').config();
 const express = require("express")
 const mongoose = require('mongoose');
@@ -11,7 +11,6 @@ const User = require('./mongoo.js');
 const MongoStore = require('connect-mongo');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 const cors = require("cors")
 const bodyParser = require('body-parser');
 const app = express()
@@ -256,18 +255,29 @@ app.get('/getMenuItems/:uniqueID', async (req, res) => {
 // });
 
 
-
-app.get("/signout", (req, res) => {
+app.get("/signout", verifyToken, (req, res) => {
   req.session.destroy((err) => {
-      if (err) {
-          console.error("Error destroying session:", err);
-          res.json({ status: "error", message: "Failed to sign out" });
-      } else {
-          res.clearCookie('connect.sid'); // Clear the session cookie
-          res.json({ status: "success", message: "Signed out successfully" });
-        }
-      });
-    });
+    if (err) {
+      console.error("Error destroying session:", err);
+      res.json({ status: "error", message: "Failed to sign out" });
+    } else {
+      res.clearCookie('connect.sid'); // Clear the session cookie
+      res.json({ status: "success", message: "Signed out successfully" });
+    }
+  });
+});
+
+// app.get("/signout", (req, res) => {
+//   req.session.destroy((err) => {
+//       if (err) {
+//           console.error("Error destroying session:", err);
+//           res.json({ status: "error", message: "Failed to sign out" });
+//       } else {
+//           res.clearCookie('connect.sid'); // Clear the session cookie
+//           res.json({ status: "success", message: "Signed out successfully" });
+//         }
+//       });
+//     });
     
 
 
@@ -690,16 +700,11 @@ app.delete('/menu-items/:id', async (req, res) => {
     res.status(500).json({ message: 'Error deleting menu item' });
   }
 });
-
-app.post('/changePassword', async (req, res) => {
+app.post('/changePassword', verifyToken, async (req, res) => {
   try {
-    if (!req.session.email) {
-      return res.status(401).json({ message: 'User not authenticated' });
-    }
-    
     const { newPassword } = req.body;
     
-    const user = await collection.findOne({ email: req.session.email });
+    const user = await collection.findOne({ email: req.email }); // Using req.email from verifyToken middleware
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -714,7 +719,9 @@ app.post('/changePassword', async (req, res) => {
   }
 });
 
-// app.post('/changeAdminPassword', async (req, res) => {
+
+
+// app.post('/changePassword', async (req, res) => {
 //   try {
 //     if (!req.session.email) {
 //       return res.status(401).json({ message: 'User not authenticated' });
@@ -722,13 +729,11 @@ app.post('/changePassword', async (req, res) => {
     
 //     const { newPassword } = req.body;
     
-//     const user = await User.findOne({ email: req.session.email });
-//     console.log(req.session.email)
+//     const user = await collection.findOne({ email: req.session.email });
 //     if (!user) {
 //       return res.status(404).json({ message: 'User not found' });
 //     }
     
-//     // Update user's password
 //     user.password = newPassword;
 //     await user.save();
     
@@ -738,61 +743,104 @@ app.post('/changePassword', async (req, res) => {
 //     res.status(500).json({ message: 'Internal server error', error: error.message });
 //   }
 // });
-app.post('/change-password', async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-  const email = req.session.email; // Use the email from the session
-  // console.log("Session during password change",email)
-  try {
-    const user = await User.findOne({ email, password: currentPassword });
-    if (user) {
-      user.password = newPassword;
-      await user.save();
-      res.status(200).json({ message: 'Password changed successfully!' });
-    } else {
-      res.status(401).json({ message: 'Invalid current password' });
-    }
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
 
-
-
-
-
-
-
-
-app.post('/requestItem', async (req, res) => {
+app.post('/changeAdminPassword', async (req, res) => {
   try {
     if (!req.session.email) {
       return res.status(401).json({ message: 'User not authenticated' });
     }
     
-    const { mealType, itemName } = req.body;
+    const { newPassword } = req.body;
     
-    const user = await collection.findOne({ email: req.session.email });
+    const user = await User.findOne({ email: req.session.email });
+    console.log(req.session.email)
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+    
+    // Update user's password
+    user.password = newPassword;
+    await user.save();
+    
+    res.status(200).json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+});
+// app.post('/change-password', async (req, res) => {
+//   const { currentPassword, newPassword } = req.body;
+//   const email = req.session.email; // Use the email from the session
+//   // console.log("Session during password change",email)
+//   try {
+//     const user = await User.findOne({ email, password: currentPassword });
+//     if (user) {
+//       user.password = newPassword;
+//       await user.save();
+//       res.status(200).json({ message: 'Password changed successfully!' });
+//     } else {
+//       res.status(401).json({ message: 'Invalid current password' });
+//     }
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// });
 
+
+
+app.post('/requestItem', verifyToken, async (req, res) => {
+  const { mealType, itemName } = req.body;
+  
+  try {
+    // Assuming the logic to handle item requests goes here
     const newItemRequest = new ItemRequest({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      rollNo: user.rollNo,
-      uniqueID: user.uniqueID,
       mealType,
-      itemName
+      itemName,
+      email: req.email // Use the email from the JWT token payload
     });
 
     await newItemRequest.save();
     res.status(201).json({ message: 'Item request submitted successfully' });
-    
   } catch (error) {
     console.error('Error submitting item request:', error);
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
+
+
+
+
+
+// app.post('/requestItem', async (req, res) => {
+//   try {
+//     if (!req.session.email) {
+//       return res.status(401).json({ message: 'User not authenticated' });
+//     }
+    
+//     const { mealType, itemName } = req.body;
+    
+//     const user = await collection.findOne({ email: req.session.email });
+//     if (!user) {
+//       return res.status(404).json({ message: 'User not found' });
+//     }
+
+//     const newItemRequest = new ItemRequest({
+//       firstName: user.firstName,
+//       lastName: user.lastName,
+//       rollNo: user.rollNo,
+//       uniqueID: user.uniqueID,
+//       mealType,
+//       itemName
+//     });
+
+//     await newItemRequest.save();
+//     res.status(201).json({ message: 'Item request submitted successfully' });
+    
+//   } catch (error) {
+//     console.error('Error submitting item request:', error);
+//     res.status(500).json({ message: 'Internal server error', error: error.message });
+//   }
+// });
 
 app.get('/item-requests', async (req, res) => {
   try {
