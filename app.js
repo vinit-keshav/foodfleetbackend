@@ -145,6 +145,7 @@ function verifyToken(req, res, next) {
     
     console.log('Decoded Token Payload:', decoded); // Log decoded token payload
     req.email = decoded.email; // Assuming your JWT payload includes 'email'
+    
     next();
   });
 }
@@ -436,6 +437,7 @@ app.post('/saveOrder', verifyToken, async (req, res) => {
 //     res.status(500).json({ message: 'Internal server error', error: error.message });
 //   }
 // });
+
 
 
 
@@ -788,15 +790,56 @@ app.post('/changeAdminPassword', async (req, res) => {
 
 
 
-app.post('/requestItem', verifyToken, async (req, res) => {
-  const { mealType, itemName } = req.body;
+// app.post('/requestItem', verifyToken, async (req, res) => {
+//   const { mealType, itemName } = req.body;
   
+//   try {
+//     // Assuming the logic to handle item requests goes here
+//     const newItemRequest = new ItemRequest({
+//       mealType,
+//       itemName,
+//       email: req.email// Use the email from the JWT token payload
+
+
+//     });
+
+//     await newItemRequest.save();
+//     res.status(201).json({ message: 'Item request submitted successfully' });
+//   } catch (error) {
+//     console.error('Error submitting item request:', error);
+//     res.status(500).json({ message: 'Internal server error', error: error.message });
+//   }
+// });
+
+
+
+
+
+// app.post('/requestItem', verifyToken, async (req, res) => {
+//   const { mealType, itemName } = req.body;
+//   const { firstName, lastName, rollNo, uniqueID, email } = req.user; // Extract user details from the token payload
+
+//   try {
+//     const newItemRequest = new ItemRequest({
+//       firstName,
+//       lastName,
+//       rollNo,
+//       uniqueID,
+//       mealType,
+//       itemName,
+//       email
+//     });
+app.post('/requestItem', async (req, res) => {
+  const { firstName, lastName, rollNo, uniqueID, mealType, itemName } = req.body;
+
   try {
-    // Assuming the logic to handle item requests goes here
     const newItemRequest = new ItemRequest({
+      firstName,
+      lastName,
+      rollNo,
+      uniqueID,
       mealType,
-      itemName,
-      email: req.email // Use the email from the JWT token payload
+      itemName
     });
 
     await newItemRequest.save();
@@ -806,10 +849,13 @@ app.post('/requestItem', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
-
-
-
-
+//     await newItemRequest.save();
+//     res.status(201).json({ message: 'Item request submitted successfully' });
+//   } catch (error) {
+//     console.error('Error submitting item request:', error);
+//     res.status(500).json({ message: 'Internal server error', error: error.message });
+//   }
+// });
 
 // app.post('/requestItem', async (req, res) => {
 //   try {
