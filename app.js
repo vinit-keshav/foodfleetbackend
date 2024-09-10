@@ -73,13 +73,19 @@ app.post("/", async (req, res) => {
 
     if (user && user.password === password) {
      
-      const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, {
+      const token = jwt.sign({
+        email: user.email,
+        firstName: user.firstName,
+        rollNo: user.rollNo,
+        uniqueID: user.uniqueID
+       }, process.env.JWT_SECRET, {
         expiresIn: '1h' 
       });
 
       
       req.session.email = user.email;
       req.session.rollNo = user.rollNo;
+      // console.log(req.session.rollNo);
      
       res.json({
         status: "success",
@@ -120,6 +126,7 @@ function verifyToken(req, res, next) {
     
     console.log('Decoded Token Payload:', decoded); 
     req.email = decoded.email; 
+    req.rollNo = decoded.rollNo;
     
     next();
   });
@@ -417,11 +424,43 @@ app.post("/verify-otp", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
-app.get('/total-orders', async (req, res) => {
-  const rollNo = req.session.rollNo; // Retrieve rollNo from the session
+// app.get('/total-orders', async (req, res) => {
+//   const rollNo = req.session.rollNo; // Retrieve rollNo from the session
   
+//   if (!rollNo) {
+//     return res.status(401).json({ message: 'Unauthorized access: No roll number found in session' });
+//   }
+
+//   try {
+//     // Fetch the student's order based on rollNo
+//     console.log(`Fetching orders for rollNo: ${rollNo}`);
+//     const studentOrder = await StudentOrder.findOne({ rollNo });
+
+//     if (studentOrder) {
+//       const totalOrdersCount = studentOrder.orders.length; // Get the number of orders
+//       const totalPrice = studentOrder.totalPrice; // Get the total price of the orders
+
+//       console.log(`Orders found: ${totalOrdersCount}, Total Price: ${totalPrice}`);
+
+//       res.status(200).json({
+//         message: 'Total orders fetched successfully',
+//         totalOrdersCount: totalOrdersCount, // Send the total number of orders
+//         totalPrice: totalPrice // Send the total price of the orders
+//       });
+//     } else {
+//       res.status(404).json({ message: 'No orders found for this student' });
+//     }
+//   } catch (error) {
+//     console.error('Error fetching total orders:', error);
+//     res.status(500).json({ message: 'Internal server error' });
+//   }
+// });
+
+app.get('/total-orders', verifyToken, async (req, res) => {
+  const rollNo = req.rollNo; // Retrieve rollNo from the decoded token
+
   if (!rollNo) {
-    return res.status(401).json({ message: 'Unauthorized access: No roll number found in session' });
+    return res.status(401).json({ message: 'Unauthorized access: No roll number found in token' });
   }
 
   try {
@@ -448,7 +487,6 @@ app.get('/total-orders', async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
-
 
 app.get('/students', async (req, res) => {
   try {
@@ -705,7 +743,3 @@ module.exports = router;
 app.listen(port,()=>{
   console.log(`port connected ${port}`);
 })
-
-
-
-
