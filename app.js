@@ -16,6 +16,9 @@ const bodyParser = require('body-parser');
 const app = express()
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+const { sendOtpEmail } = require('./mailer'); // Adjust the path as needed
+const crypto = require('crypto');
+
 // app.use(cors())
 const port = process.env.PORT || 8000
 
@@ -33,11 +36,11 @@ mongoose.connect(process.env.DATABASE, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('Error connecting to MongoDB:', err));
+.then(() => console.log('Connected to MongoDB'))
+.catch(err => console.error('Error connecting to MongoDB:', err));
 
 
-  app.use(bodyParser.json());
+app.use(bodyParser.json());
 
 app.use(session({
   secret:  process.env.SESSION_SECRET,
@@ -48,9 +51,9 @@ app.use(session({
     collectionName: 'sessions'
   }),
   cookie: {
-     secure: process.env.NODE_ENV === 'production',  
-     httpOnly: true,
-     sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',maxAge: 3600000
+    secure: process.env.NODE_ENV === 'production',  
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',maxAge: 3600000
   }
 }));
 
@@ -59,6 +62,9 @@ app.use((req, res, next) => {
   next();
 });
 
+const generateOTP = () => {
+  return crypto.randomInt(100000, 999999); // Generates a 6-digit OTP
+};
 app.post("/", async (req, res) => {
   const { email, password } = req.body;
 
@@ -73,7 +79,7 @@ app.post("/", async (req, res) => {
 
       
       req.session.email = user.email;
-
+      req.session.rollNo = user.rollNo;
      
       res.json({
         status: "success",
@@ -232,25 +238,66 @@ app.post('/signupp', async (req, res) => {
   }
 });
 
+// app.post('/login', async (req, res) => {
+//   const { email, password } = req.body;
+//   try {
+//     const user = await User.findOne({ email, password });
+//     if (user) {
+//       req.session.email = user.email;
+//       req.session.save(err => {
+//         if (err) {
+//           console.error("Session save error:", err);
+//           return res.status(500).json({ message: 'Error saving session' });
+//         }
+//          console.log("Session after setting email:", req.session.email);
+//         res.status(200).json({ 
+//           message: 'Login successful!',
+//           email:user.email, 
+//           uniqueID: user.uniqueID,
+//           firstName: user.firstName,
+//           rollNo: user.rollNo 
+//         });
+//       });
+//     } else {
+//       res.status(401).json({ message: 'Invalid email or password' });
+//     }
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// });
+
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await User.findOne({ email, password });
     if (user) {
-      req.session.email = user.email;
-      req.session.save(err => {
-        if (err) {
-          console.error("Session save error:", err);
-          return res.status(500).json({ message: 'Error saving session' });
-        }
-         console.log("Session after setting email:", req.session.email);
-        res.status(200).json({ 
-          message: 'Login successful!',
-          email:user.email, 
+      // Generate JWT token
+      const token = jwt.sign(
+        {
+          email: user.email,
           uniqueID: user.uniqueID,
           firstName: user.firstName,
-          rollNo: user.rollNo 
-        });
+          lastName: user.lastName,
+          instituteName: user.instituteName,
+        },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: '1h', // Token expires in 1 hour
+        }
+      );
+
+      // Log the token to check if it’s generated
+      console.log("Generated Token:", token);
+      res.status(200).json({
+        message: 'Login successful!',
+        token: token,  // Sending the JWT token to the frontend
+        user: {
+          email: user.email,
+          uniqueID: user.uniqueID,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          instituteName: user.instituteName,
+        }
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
@@ -262,22 +309,63 @@ app.post('/login', async (req, res) => {
 
 
 
-
+// app.post("/signup", async (req, res) => {
+//   try {
+//     const { firstName, lastName, rollNo, email, password, instituteName, uniqueID } = req.body;
+//     console.log('Signup request body:', req.body);
+    
+//     const existingUserByEmail = await collection.findOne({ email });
+//     if (existingUserByEmail) {
+//       return res.status(400).json({ message: "User with this email already exists" });
+//     }
+    
+//     const existingUserByRollNo = await collection.findOne({ rollNo });
+//     if (existingUserByRollNo) {
+//       return res.status(400).json({ message: "User with this roll number already exists" });
+//     }
+    
+//     const newUser = new collection({
+//       firstName,
+//       lastName,
+//       rollNo,
+//       email,
+//       password,
+//       instituteName,
+//       uniqueID
+//     });
+    
+//     await newUser.save();
+//     res.status(201).json({ message: "Signup successful" });
+//   } catch (error) {
+//     console.error("Error details:", error);
+//     if (error.code === 11000) {
+//       const field = Object.keys(error.keyPattern)[0];
+//       return res.status(400).json({ message: `Duplicate key error: A user with this ${field} already exists.` });
+//     }
+//     res.status(500).json({ message: "Internal server error" });
+//   }
+// });
 app.post("/signup", async (req, res) => {
   try {
     const { firstName, lastName, rollNo, email, password, instituteName, uniqueID } = req.body;
-    console.log('Signup request body:', req.body);
-    
+
     const existingUserByEmail = await collection.findOne({ email });
     if (existingUserByEmail) {
       return res.status(400).json({ message: "User with this email already exists" });
     }
-    
+
     const existingUserByRollNo = await collection.findOne({ rollNo });
     if (existingUserByRollNo) {
       return res.status(400).json({ message: "User with this roll number already exists" });
     }
-    
+
+    const otp = generateOTP();
+
+    // Send OTP email
+    await sendOtpEmail(email, otp);
+
+    // Store the user data along with OTP in the database
+    // You can also store the OTP and its expiration time in a separate collection
     const newUser = new collection({
       firstName,
       lastName,
@@ -285,21 +373,81 @@ app.post("/signup", async (req, res) => {
       email,
       password,
       instituteName,
-      uniqueID
+      uniqueID,
+      otp,
+      otpExpires: Date.now() + 10 * 60 * 1000 // OTP expires in 10 minutes
     });
-    
+
     await newUser.save();
-    res.status(201).json({ message: "Signup successful" });
+
+    res.status(201).json({ message: "Signup successful. Please verify your email." });
   } catch (error) {
     console.error("Error details:", error);
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern)[0];
-      return res.status(400).json({ message: `Duplicate key error: A user with this ${field} already exists.` });
-    }
     res.status(500).json({ message: "Internal server error" });
   }
 });
+app.post("/verify-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
 
+    const user = await collection.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid request." });
+    }
+
+    if (user.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP." });
+    }
+
+    if (Date.now() > user.otpExpires) {
+      return res.status(400).json({ message: "OTP expired." });
+    }
+
+    // OTP is correct and not expired; finalize signup
+    user.isVerified = true;
+    user.otp = null; // Clear the OTP after verification
+    user.otpExpires = null;
+
+    await user.save();
+
+    res.status(200).json({ message: "OTP verified successfully." });
+  } catch (error) {
+    console.error("Error details:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+app.get('/total-orders', async (req, res) => {
+  const rollNo = req.session.rollNo; // Retrieve rollNo from the session
+  
+  if (!rollNo) {
+    return res.status(401).json({ message: 'Unauthorized access: No roll number found in session' });
+  }
+
+  try {
+    // Fetch the student's order based on rollNo
+    console.log(`Fetching orders for rollNo: ${rollNo}`);
+    const studentOrder = await StudentOrder.findOne({ rollNo });
+
+    if (studentOrder) {
+      const totalOrdersCount = studentOrder.orders.length; // Get the number of orders
+      const totalPrice = studentOrder.totalPrice; // Get the total price of the orders
+
+      console.log(`Orders found: ${totalOrdersCount}, Total Price: ${totalPrice}`);
+
+      res.status(200).json({
+        message: 'Total orders fetched successfully',
+        totalOrdersCount: totalOrdersCount, // Send the total number of orders
+        totalPrice: totalPrice // Send the total price of the orders
+      });
+    } else {
+      res.status(404).json({ message: 'No orders found for this student' });
+    }
+  } catch (error) {
+    console.error('Error fetching total orders:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
 
 
 app.get('/students', async (req, res) => {
