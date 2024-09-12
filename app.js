@@ -236,12 +236,85 @@ app.post('/saveOrder', verifyToken, async (req, res) => {
 
 
 
+// app.post('/signupp', async (req, res) => {
+//   try {
+//     const user = await User.create(req.body);
+//     res.status(201).json(user);
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// });
 app.post('/signupp', async (req, res) => {
   try {
-    const user = await User.create(req.body);
-    res.status(201).json(user);
+    const { email, password, firstName, lastName, instituteName, uniqueID } = req.body;
+
+    // Check if email or uniqueID already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    const existingUniqueID = await User.findOne({ uniqueID });
+    if (existingUniqueID) {
+      return res.status(400).json({ message: "Unique ID already exists" });
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    const otpExpires = Date.now() + 10 * 60 * 1000; // OTP expires in 10 minutes
+
+    // Send OTP via email
+    await sendOtpEmail(email, otp);
+
+    // Create a new user with OTP and save to the database
+    const newUser = new User({
+      email,
+      password,
+      firstName,
+      lastName,
+      instituteName,
+      uniqueID,
+      otp,
+      otpExpires
+    });
+
+    await newUser.save();
+
+    res.status(201).json({ message: "Signup successful. Please verify your email." });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Signup error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+app.post("/verify-otpa", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid request." });
+    }
+
+    if (user.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP." });
+    }
+
+    if (Date.now() > user.otpExpires) {
+      return res.status(400).json({ message: "OTP expired." });
+    }
+
+    // OTP is correct and not expired; finalize signup
+    user.isVerified = true;
+    user.otp = null; // Clear the OTP after verification
+    user.otpExpires = null;
+
+    await user.save();
+
+    res.status(200).json({ message: "OTP verified successfully." });
+  } catch (error) {
+    console.error("Error details:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
