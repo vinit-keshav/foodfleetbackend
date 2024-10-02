@@ -12,12 +12,30 @@ const MongoStore = require('connect-mongo');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const cors = require("cors")
+const cloudinary = require('cloudinary').v2;
+const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const bodyParser = require('body-parser');
 const app = express()
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 const { sendOtpEmail } = require('./mailer'); // Adjust the path as needed
 const crypto = require('crypto');
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'menu-items', // Folder name in Cloudinary
+    allowed_formats: ['jpg', 'jpeg', 'png'],
+  },
+});
+
+const upload = multer({ storage: storage });
 
 // app.use(cors())
 const port = process.env.PORT || 8000
@@ -668,17 +686,75 @@ app.put('/student-order/subtract', async (req, res) => {
 
 
 
-app.post('/menu-items', async (req, res) => {
-  const { itemName, price, availableQuantity, uniqueID } = req.body;
+// app.post('/menu-items', async (req, res) => {
+//   const { itemName, price, availableQuantity, uniqueID } = req.body;
   
+//   try {
+//     const menuItem = new MenuItem({
+//       itemName,
+//       price,
+//       availableQuantity,
+//       uniqueID
+//     });
+    
+//     await menuItem.save();
+//     res.status(201).json({ message: 'Menu item added successfully' });
+//   } catch (error) {
+//     console.error('Error adding menu item:', error);
+//     res.status(500).json({ message: 'Error adding menu item' });
+//   }
+// });
+// app.get('/menu-items/:uniqueID', async (req, res) => {
+//   const { uniqueID } = req.params;
+//   try {
+//     const menuItems = await MenuItem.find({ uniqueID });
+//     res.status(200).json(menuItems);
+//   } catch (error) {
+//     console.error('Error fetching menu items:', error);
+//     res.status(500).json({ message: 'Error fetching menu items' });
+//   }
+// });
+
+// app.put('/menu-items/:id', async (req, res) => {
+//   const { id } = req.params;
+//   const { itemName, price, availableQuantity } = req.body;
+//   try {
+//     await MenuItem.findByIdAndUpdate(id, { itemName, price, availableQuantity });
+//     res.status(200).json({ message: 'Menu item updated successfully' });
+//   } catch (error) {
+//     console.error('Error updating menu item:', error);
+//     res.status(500).json({ message: 'Error updating menu item' });
+//   }
+// });
+
+
+// app.delete('/menu-items/:id', async (req, res) => {
+//   const { id } = req.params;
+//   try {
+//     await MenuItem.findByIdAndDelete(id);
+//     res.status(200).json({ message: 'Menu item deleted successfully' });
+//   } catch (error) {
+//     console.error('Error deleting menu item:', error);
+//     res.status(500).json({ message: 'Error deleting menu item' });
+//   }
+// });
+
+
+
+// Add menu item with image
+app.post('/menu-items', upload.single('image'), async (req, res) => {
+  const { itemName, price, availableQuantity, uniqueID } = req.body;
+  const imageUrl = req.file.path; // Cloudinary URL
+
   try {
     const menuItem = new MenuItem({
       itemName,
       price,
       availableQuantity,
-      uniqueID
+      uniqueID,
+      imageUrl, // Save the image URL to the database
     });
-    
+
     await menuItem.save();
     res.status(201).json({ message: 'Menu item added successfully' });
   } catch (error) {
@@ -686,6 +762,8 @@ app.post('/menu-items', async (req, res) => {
     res.status(500).json({ message: 'Error adding menu item' });
   }
 });
+
+// Get menu items by uniqueID
 app.get('/menu-items/:uniqueID', async (req, res) => {
   const { uniqueID } = req.params;
   try {
@@ -697,11 +775,24 @@ app.get('/menu-items/:uniqueID', async (req, res) => {
   }
 });
 
-app.put('/menu-items/:id', async (req, res) => {
+// Update menu item
+app.put('/menu-items/:id', upload.single('image'), async (req, res) => {
   const { id } = req.params;
   const { itemName, price, availableQuantity } = req.body;
+  const imageUrl = req.file ? req.file.path : undefined; // Update image only if a new one is uploaded
+
   try {
-    await MenuItem.findByIdAndUpdate(id, { itemName, price, availableQuantity });
+    const updateData = {
+      itemName,
+      price,
+      availableQuantity,
+    };
+
+    if (imageUrl) {
+      updateData.imageUrl = imageUrl;
+    }
+
+    await MenuItem.findByIdAndUpdate(id, updateData);
     res.status(200).json({ message: 'Menu item updated successfully' });
   } catch (error) {
     console.error('Error updating menu item:', error);
@@ -709,7 +800,7 @@ app.put('/menu-items/:id', async (req, res) => {
   }
 });
 
-
+// Delete menu item
 app.delete('/menu-items/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -720,6 +811,8 @@ app.delete('/menu-items/:id', async (req, res) => {
     res.status(500).json({ message: 'Error deleting menu item' });
   }
 });
+
+
 app.post('/changePassword', verifyToken, async (req, res) => {
   try {
     const { newPassword } = req.body;

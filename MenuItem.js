@@ -18,6 +18,10 @@ const menuItemSchema = new mongoose.Schema({
   uniqueID: {
     type: Number,
     required: true
+  },
+  imageUrl: {
+    type: String,  // The Cloudinary URL of the uploaded image
+    required: true // Ensuring that the image URL is saved
   }
 });
 
