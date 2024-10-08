@@ -686,60 +686,6 @@ app.put('/student-order/subtract', async (req, res) => {
 
 
 
-// app.post('/menu-items', async (req, res) => {
-//   const { itemName, price, availableQuantity, uniqueID } = req.body;
-  
-//   try {
-//     const menuItem = new MenuItem({
-//       itemName,
-//       price,
-//       availableQuantity,
-//       uniqueID
-//     });
-    
-//     await menuItem.save();
-//     res.status(201).json({ message: 'Menu item added successfully' });
-//   } catch (error) {
-//     console.error('Error adding menu item:', error);
-//     res.status(500).json({ message: 'Error adding menu item' });
-//   }
-// });
-// app.get('/menu-items/:uniqueID', async (req, res) => {
-//   const { uniqueID } = req.params;
-//   try {
-//     const menuItems = await MenuItem.find({ uniqueID });
-//     res.status(200).json(menuItems);
-//   } catch (error) {
-//     console.error('Error fetching menu items:', error);
-//     res.status(500).json({ message: 'Error fetching menu items' });
-//   }
-// });
-
-// app.put('/menu-items/:id', async (req, res) => {
-//   const { id } = req.params;
-//   const { itemName, price, availableQuantity } = req.body;
-//   try {
-//     await MenuItem.findByIdAndUpdate(id, { itemName, price, availableQuantity });
-//     res.status(200).json({ message: 'Menu item updated successfully' });
-//   } catch (error) {
-//     console.error('Error updating menu item:', error);
-//     res.status(500).json({ message: 'Error updating menu item' });
-//   }
-// });
-
-
-// app.delete('/menu-items/:id', async (req, res) => {
-//   const { id } = req.params;
-//   try {
-//     await MenuItem.findByIdAndDelete(id);
-//     res.status(200).json({ message: 'Menu item deleted successfully' });
-//   } catch (error) {
-//     console.error('Error deleting menu item:', error);
-//     res.status(500).json({ message: 'Error deleting menu item' });
-//   }
-// });
-
-
 
 // Add menu item with image
 app.post('/menu-items', upload.single('image'), async (req, res) => {
@@ -787,11 +733,11 @@ app.put('/menu-items/:id', upload.single('image'), async (req, res) => {
       price,
       availableQuantity,
     };
-
+    
     if (imageUrl) {
       updateData.imageUrl = imageUrl;
     }
-
+    
     await MenuItem.findByIdAndUpdate(id, updateData);
     res.status(200).json({ message: 'Menu item updated successfully' });
   } catch (error) {
@@ -874,7 +820,7 @@ app.post('/requestItem', async (req, res) => {
       mealType,
       itemName
     });
-
+    
     await newItemRequest.save();
     res.status(201).json({ message: 'Item request submitted successfully' });
   } catch (error) {
@@ -887,7 +833,7 @@ app.post('/requestItem', async (req, res) => {
 app.get('/item-requests', async (req, res) => {
   try {
     const { uniqueID } = req.query;
-   
+    
     
     const itemRequests = await ItemRequest.find({ uniqueID: Number(uniqueID) });
     console.log('Query result:', itemRequests);
@@ -909,3 +855,58 @@ module.exports = router;
 app.listen(port,()=>{
   console.log(`port connected ${port}`);
 })
+
+  
+  
+  // app.post('/menu-items', async (req, res) => {
+  //   const { itemName, price, availableQuantity, uniqueID } = req.body;
+    
+  //   try {
+  //     const menuItem = new MenuItem({
+  //       itemName,
+  //       price,
+  //       availableQuantity,
+  //       uniqueID
+  //     });
+      
+  //     await menuItem.save();
+  //     res.status(201).json({ message: 'Menu item added successfully' });
+  //   } catch (error) {
+  //     console.error('Error adding menu item:', error);
+  //     res.status(500).json({ message: 'Error adding menu item' });
+  //   }
+  // });
+  // app.get('/menu-items/:uniqueID', async (req, res) => {
+  //   const { uniqueID } = req.params;
+  //   try {
+  //     const menuItems = await MenuItem.find({ uniqueID });
+  //     res.status(200).json(menuItems);
+  //   } catch (error) {
+  //     console.error('Error fetching menu items:', error);
+  //     res.status(500).json({ message: 'Error fetching menu items' });
+  //   }
+  // });
+  
+  // app.put('/menu-items/:id', async (req, res) => {
+  //   const { id } = req.params;
+  //   const { itemName, price, availableQuantity } = req.body;
+  //   try {
+  //     await MenuItem.findByIdAndUpdate(id, { itemName, price, availableQuantity });
+  //     res.status(200).json({ message: 'Menu item updated successfully' });
+  //   } catch (error) {
+  //     console.error('Error updating menu item:', error);
+  //     res.status(500).json({ message: 'Error updating menu item' });
+  //   }
+  // });
+  
+  
+  // app.delete('/menu-items/:id', async (req, res) => {
+  //   const { id } = req.params;
+  //   try {
+  //     await MenuItem.findByIdAndDelete(id);
+  //     res.status(200).json({ message: 'Menu item deleted successfully' });
+  //   } catch (error) {
+  //     console.error('Error deleting menu item:', error);
+  //     res.status(500).json({ message: 'Error deleting menu item' });
+  //   }
+  // });
