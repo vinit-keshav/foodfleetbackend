@@ -19,7 +19,7 @@ const bodyParser = require('body-parser');
 const app = express()
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
-const { sendOtpEmail } = require('./mailer'); // Adjust the path as needed
+const { sendOtpEmail } = require('./mailer');
 const crypto = require('crypto');
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -151,8 +151,6 @@ function verifyToken(req, res, next) {
 }
 
 
-
-
 app.get('/getUserDetails', verifyToken, async (req, res) => {
   try {
     const user = await collection.findOne({ email: req.email });
@@ -174,18 +172,38 @@ app.get('/getUserDetails', verifyToken, async (req, res) => {
   }
 });
 
-
-
 app.get('/getMenuItems/:uniqueID', async (req, res) => {
   try {
-    const menuItems = await MenuItem.find({ uniqueID: req.params.uniqueID });
-    res.json(menuItems);
+    const { page = 1, limit = 1 } = req.query; 
+
+    const menuItems = await MenuItem.find({ uniqueID: req.params.uniqueID })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const totalItems = await MenuItem.countDocuments({ uniqueID: req.params.uniqueID });
+
+    res.json({
+      menuItems,
+      totalPages: Math.ceil(totalItems / limit),
+      currentPage: parseInt(page)
+    });
   } catch (error) {
     console.error('Error fetching menu items:', error);
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
 
+
+
+// app.get('/getMenuItems/:uniqueID', async (req, res) => {
+//   try {
+//     const menuItems = await MenuItem.find({ uniqueID: req.params.uniqueID });
+//     res.json(menuItems);
+//   } catch (error) {
+//     console.error('Error fetching menu items:', error);
+//     res.status(500).json({ message: 'Internal server error', error: error.message });
+//   }
+// });
 
 app.get("/signout", verifyToken, (req, res) => {
   req.session.destroy((err) => {
@@ -910,3 +928,4 @@ app.listen(port,()=>{
   //     res.status(500).json({ message: 'Error deleting menu item' });
   //   }
   // });
+  
